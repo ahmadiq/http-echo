@@ -1,0 +1,33 @@
+name: CI Workflow
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  load-test:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build docker image
+        run: make docker TAG=$TAG
+
+      - name: Create kind cluster
+        uses: helm/kind-action@v1.10.0
+        with:
+          config: ci/kind-config.yaml
+          cluster_name: echo-cluster
+
+      - name: Deploy Ingress Controller
+        run: |
+          kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
+          kubectl wait --namespace ingress-nginx \
+            --for=condition=ready pod \
+            --selector=app.kubernetes.io/component=controller \
+            --timeout=90s
