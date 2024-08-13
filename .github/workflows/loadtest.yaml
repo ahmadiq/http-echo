@@ -40,7 +40,10 @@ jobs:
         run: kind load docker-image $TAG --name $CLUSTER
 
       - name: Deploy http-echo service
-        run: kubectl apply -f ci/service-deployment.yaml
+        run: |
+          kubectl create namespace loadtest
+          kubectl create -f ci/service-deployment.yaml -n loadtest
+          kubectl wait deployments --all --for condition=available -n loadtest
 
       - name: Load Test set up
         uses: grafana/setup-k6-action@v1
