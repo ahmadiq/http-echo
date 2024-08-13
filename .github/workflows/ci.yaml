@@ -5,6 +5,9 @@ on:
     branches:
       - main
 
+env:
+  TAG: http-echo:loadtest
+
 jobs:
   load-test:
     runs-on: ubuntu-22.04
