@@ -15,7 +15,7 @@ spec:
         app: foo-app
     spec:
       containers:
-      - image: echo:test
+      - image: IMAGE:TAG
         imagePullPolicy: Never
         name: foo-app
         env:
@@ -50,7 +50,7 @@ spec:
         app: bar-app
     spec:
       containers:
-      - image: echo:test
+      - image: IMAGE:TAG
         imagePullPolicy: Never
         name: bar-app
         env:

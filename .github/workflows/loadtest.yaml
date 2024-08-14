@@ -6,8 +6,7 @@ on:
       - main
 
 env:
-  TAG: http-echo:loadtest
-  CLUSTER: echo-cluster
+  CONFIG_PATH: "./ci"
 
 jobs:
   load-test:
@@ -19,13 +18,18 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Load Env
+        uses: aarcangeli/load-dotenv@v1.0.0
+        with:
+          path: ${{ env.CONFIG_PATH }}
+
       - name: Build docker image
-        run: make docker TAG=$TAG
+        run: make docker TAG=$IMAGE_TAG
 
       - name: Create kind cluster
         uses: helm/kind-action@v1.10.0
         with:
-          config: ci/kind-config.yaml
+          config: ${{ env.CONFIG_PATH }}/kind-config.yaml
           cluster_name: echo-cluster
 
       - name: Deploy Ingress Controller
@@ -37,22 +41,24 @@ jobs:
             --timeout=90s
 
       - name: Load Docker Image
-        run: kind load docker-image $TAG --name $CLUSTER
+        run: kind load docker-image $IMAGE_TAG --name $CLUSTER
 
       - name: Deploy http-echo service
         run: |
+          cd $CONFIG_PATH
+          kustomize edit set image IMAGE=$IMAGE_TAG
           kubectl create namespace loadtest
-          kubectl create -f ci/service-deployment.yaml -n loadtest
+          kubectl create -n loadtest -k .
           kubectl wait -n loadtest \
              --for=condition=ready pod \
              --all --timeout=90s
 
-      - name: Load Test set up
+      - name: Set up Load Test
         uses: grafana/setup-k6-action@v1
         with:
-          k6-version: '0.52.0'
+          k6-version: '0.53.0'
 
       - name: Run Load Test
         uses: grafana/run-k6-action@v1
         with:
-          path: ./ci/load-test.js
+          path: ${{ env.CONFIG_PATH }}/load-test.js
