@@ -1,0 +1,81 @@
+name: Load Test Workflow
+
+on:
+  pull_request:
+    branches:
+      - main
+
+env:
+  CONFIG_PATH: "./ci"
+
+jobs:
+  load-test:
+    runs-on: ubuntu-22.04
+    permissions:
+      pull-requests: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Load Env
+        uses: aarcangeli/load-dotenv@v1.0.0
+        with:
+          path: ${{ env.CONFIG_PATH }}
+
+      - name: Build docker image
+        run: make docker TAG=$IMAGE_TAG
+
+      - name: Create kind cluster
+        uses: helm/kind-action@v1.10.0
+        with:
+          config: ${{ env.CONFIG_PATH }}/kind-config.yaml
+          cluster_name: echo-cluster
+
+      - name: Deploy Ingress Controller
+        run: |
+          kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
+          kubectl wait -n ingress-nginx \
+            --for=condition=ready pod \
+            --selector=app.kubernetes.io/component=controller \
+            --timeout=90s
+
+      - name: Load Docker Image
+        run: kind load docker-image $IMAGE_TAG --name $CLUSTER
+
+      - name: Deploy http-echo service
+        run: |
+          cd $CONFIG_PATH
+          kustomize edit set image IMAGE=$IMAGE_TAG
+          kubectl create namespace loadtest
+          kubectl create -n loadtest -k .
+          kubectl wait -n loadtest \
+             --for=condition=ready pod \
+             --all --timeout=90s
+
+      - name: Set up Load Test
+        uses: grafana/setup-k6-action@v1
+        with:
+          k6-version: '0.53.0'
+
+      - name: Run Load Test
+        id: k6-loadtest
+        uses: grafana/run-k6-action@v1
+        with:
+          path: ${{ env.CONFIG_PATH }}/load-test.js
+
+      - name: Read Load Test Report
+        id: report
+        uses: juliangruber/read-file-action@v1
+        with:
+          path: report.txt
+
+      - name: Create comment from Load Test Report
+        uses: GrantBirki/comment@v2.1.0
+        with:
+          body: |
+            ```
+            ${{ steps.report.outputs.content }}
+            ```

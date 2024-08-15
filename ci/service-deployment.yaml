@@ -1,0 +1,97 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: foo-app
+  labels:
+    app: foo-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: foo-app
+  template:
+    metadata:
+      labels:
+        app: foo-app
+    spec:
+      containers:
+      - image: IMAGE:TAG
+        imagePullPolicy: Never
+        name: foo-app
+        env:
+        - name: ECHO_TEXT
+          value: "foo"
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: foo-service
+spec:
+  selector:
+    app: foo-app
+  ports:
+  - port: 80
+    targetPort: 5678
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: bar-app
+  labels:
+    app: bar-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bar-app
+  template:
+    metadata:
+      labels:
+        app: bar-app
+    spec:
+      containers:
+      - image: IMAGE:TAG
+        imagePullPolicy: Never
+        name: bar-app
+        env:
+        - name: ECHO_TEXT
+          value: "bar"
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: bar-service
+spec:
+  selector:
+    app: bar-app
+  ports:
+  - port: 80
+    targetPort: 5678
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: foobar-ingress
+spec:
+  rules:
+  - host: foo.localhost
+    http:
+      paths:
+      - pathType: Prefix
+        path: "/"
+        backend:
+          service:
+            name: foo-service
+            port:
+              number: 80
+  - host: bar.localhost
+    http:
+      paths:
+      - pathType: Prefix
+        path: "/"
+        backend:
+          service:
+            name: bar-service
+            port:
+              number: 80
+---
