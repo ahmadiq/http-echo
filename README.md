@@ -10,3 +10,6 @@ http-echo -listen=:8080 -text="hello world"
 ```
 
 Then visit http://localhost:8080/ in your browser.
+
+### Load Test Workflow
+Details on the Load Test workflow can be found [here](docs/Load%20Test.md)
