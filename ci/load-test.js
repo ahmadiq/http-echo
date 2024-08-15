@@ -1,5 +1,6 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
+import { textSummary } from 'https://jslib.k6.io/k6-summary/0.1.0/index.js';
 
 export const options = {
   stages: [
@@ -29,3 +30,11 @@ export default function () {
 
   sleep(0.5);
 }
+
+export function handleSummary(data) {
+  return {
+    'report.txt': textSummary(data, { enableColors: false }),
+    stdout: textSummary(data)
+  };
+}
+

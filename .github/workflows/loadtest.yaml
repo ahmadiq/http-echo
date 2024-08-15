@@ -11,7 +11,9 @@ env:
 jobs:
   load-test:
     runs-on: ubuntu-22.04
-
+    permissions:
+      pull-requests: write
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -59,6 +61,21 @@ jobs:
           k6-version: '0.53.0'
 
       - name: Run Load Test
+        id: k6-loadtest
         uses: grafana/run-k6-action@v1
         with:
           path: ${{ env.CONFIG_PATH }}/load-test.js
+
+      - name: Read Load Test Report
+        id: report
+        uses: juliangruber/read-file-action@v1
+        with:
+          path: report.txt
+
+      - name: Create comment from Load Test Report
+        uses: GrantBirki/comment@v2.1.0
+        with:
+          body: |
+            ```
+            ${{ steps.report.outputs.content }}
+            ```
